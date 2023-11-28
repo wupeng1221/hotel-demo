@@ -1,0 +1,229 @@
+  GET _search
+    {
+  "query": {
+    "match_all": { }
+  }
+  }
+
+  #match查询
+  #推荐这样查询，将字段copy_to某一个字段
+    GET /hotel/_search
+    {
+  "query": {
+    "match": {
+      "all": "上海如家"
+    }
+  }
+  }
+  #multi_match
+    GET /hotel/_search
+    {
+      "query": {
+        "multi_match": {
+          "query": "上海如家",
+          "fields": [ "city", "name" ]
+        }
+      }
+    }
+  #精确查询
+  #term
+    GET /hotel/_search
+    {
+  "query": {
+    "term": {
+      "brand": {
+        "value": "万豪"
+      }
+    }
+  }
+  }
+  #range
+    GET /hotel/_search
+    {
+      "query": {
+        "range": {
+          "price": {
+            "gte": 1000,
+            "lte": 10000
+          }
+        }
+      }
+    }
+  #地理查询
+    GET /hotel/_search
+    {
+      "query": {
+        "geo_distance": {
+          "distance": "5km",
+          "location": "31.2, 121.5"
+        }
+      }
+    }
+  #相关性算分查询 function score
+    GET /hotel/_search
+    {
+      "query": {
+        "function_score": {
+          "query": {
+            "match": {
+              "all": "外滩"
+            }
+          },
+          "functions": [
+            {
+              "filter": {
+                "term": {
+                  "id": "60487"
+                }
+              },
+              "weight": 10
+            }
+          ],
+          "boost_mode": "multiply"
+        }
+      }
+    }
+  #提高如家酒店的查询排名
+    GET /hotel/_search
+    {
+      "query": {
+        "function_score": {
+          "query": { "match": {
+            "all": "外滩"
+          } },
+          "functions": [
+            { "filter": { "term": {
+              "brand": "如家"
+            } },
+              "weight": 10
+            }
+          ],
+          "boost_mode": "sum"
+        }
+      }
+    }
+  #组合查询
+  #查询品牌名是如家的，价格不高于400，坐标在31.21,121.5 10km范围内的酒店
+  #还有一个 should 代表 or
+  #其中must和or都会计算score得分
+    GET /hotel/_search
+    {
+      "query": {
+        "bool": {
+          "must": [
+            {
+              "term": {
+                "brand": {
+                  "value": "如家"
+                }
+              }
+            }
+          ],
+          "must_not": [
+            {
+              "range": {
+                "value": {
+                  "gt": 400
+                }
+              }
+            }
+          ],
+          "filter": [
+            {
+              "geo_distance": {
+                "distance": "10km",
+                "location": {
+                  "lat": 31.21,
+                  "lon": 121.5
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  #对搜索结果进行排序
+  #简单排序,按照价格降序排序
+    GET /hotel/_search
+    {
+      "query": {
+        "match_all": { }
+      },
+      "sort": [
+        {
+          "price": {
+            "order": "desc"
+          }
+        }
+      ]
+    }
+  #评价降序，价格升序
+    GET /hotel/_search
+    {
+      "query": {
+        "match_all": { }
+      },
+      "sort": [
+        {
+          "score": {
+            "order": "desc"
+          }
+        },
+        {
+          "price": {
+            "order": "asc"
+          }
+        }
+      ]
+    }
+  #按照地理信息排序
+    GET /hotel/_search
+    {
+      "query": {
+        "match_all": { }
+      },
+      "sort": [
+        {
+          "_geo_distance": {
+            "location": {
+              "lat": 32.21,
+              "lon": 121.5
+            },
+            "unit": "km",
+            "order": "asc"
+          }
+        }
+      ]
+    }
+  #分页查询
+    GET /hotel/_search
+    {
+      "query": {
+        "match_all": { }
+      },
+      "from": 100,
+      "size": 20,
+      "sort": [
+        {
+          "price": {
+            "order": "asc"
+          }
+        }
+      ]
+    }
+  #查询结果高亮,默认match的字段必须与highlight字段相同，可以设置不匹配
+    GET /hotel/_search
+    {
+      "query": {
+        "match": {
+          "all": "如家"
+        }
+      },
+      "highlight": {
+        "fields": {
+          "name": {
+            "require_field_match": "false"
+          }
+        }
+      }
+    }
