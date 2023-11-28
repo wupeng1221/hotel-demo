@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import org.apache.http.HttpHost;
+import org.elasticsearch.action.delete.DeleteRequest;
+import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
@@ -28,5 +30,13 @@ public class HotelDemoApplication {
     @Bean
     public SearchRequest searchRequest(){
         return new SearchRequest("hotel");
+    }
+    @Bean
+    public IndexRequest indexRequest(){
+        return new IndexRequest("hotel");
+    }
+    @Bean
+    public DeleteRequest deleteRequest(){
+        return new DeleteRequest("hotel");
     }
 }

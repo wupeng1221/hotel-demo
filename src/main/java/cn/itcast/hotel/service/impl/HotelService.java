@@ -9,12 +9,15 @@ import cn.itcast.hotel.service.IHotelService;
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.extern.slf4j.Slf4j;
+import org.elasticsearch.action.delete.DeleteRequest;
+import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.geo.GeoPoint;
 import org.elasticsearch.common.unit.DistanceUnit;
+import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.sort.SortBuilders;
@@ -34,6 +37,9 @@ public class HotelService extends ServiceImpl<HotelMapper, Hotel> implements IHo
     private RestHighLevelClient restHighLevelClient;
     @Resource
     private SearchRequest searchRequest;
+    @Resource private IndexRequest indexRequest;
+    @Resource private DeleteRequest deleteRequest;
+
 
     @Override
     public PageResult search(RequestParam requestParam) {
@@ -60,6 +66,37 @@ public class HotelService extends ServiceImpl<HotelMapper, Hotel> implements IHo
             throw new RuntimeException(e);
         }
 
+    }
+
+    @Override
+    public void insertById(Long id) {
+        try {
+            //在es中新增或修改
+            Hotel hotel = getById(id);
+            HotelDoc hotelDoc = new HotelDoc(hotel);
+            //准备indexRequest对象,在启动类中交给spring管理，现在设置对应参数即可
+            indexRequest.id(hotelDoc.getId().toString());
+            //准备json文件
+            indexRequest.source(JSON.toJSONString(hotelDoc), XContentType.JSON);
+            //发送请求
+            restHighLevelClient.index(indexRequest, RequestOptions.DEFAULT);
+            log.warn("es完成操作");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+    @Override
+    public void deleteById(Long id) {
+        try {
+            //在es中删除
+            deleteRequest.id(getById(id).getId().toString());
+            restHighLevelClient.delete(deleteRequest, RequestOptions.DEFAULT);
+            log.warn("es完成操作");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void createBasicQuery(RequestParam requestParam) {
