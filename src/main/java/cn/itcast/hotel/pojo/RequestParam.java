@@ -13,4 +13,5 @@ public class RequestParam {
     private String starName;
     private Integer minPrice;
     private Integer maxPrice;
+    private String location;
 }
