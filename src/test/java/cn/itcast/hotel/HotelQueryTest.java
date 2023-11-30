@@ -9,9 +9,13 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.index.query.*;
+import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
+import org.elasticsearch.search.aggregations.AggregationBuilders;
+import org.elasticsearch.search.aggregations.Aggregations;
+import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightField;
 import org.elasticsearch.search.sort.SortOrder;
@@ -22,9 +26,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.util.CollectionUtils;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Map;
+import java.util.*;
 
 @SpringBootTest
 @Slf4j
@@ -138,6 +140,62 @@ public class HotelQueryTest {
                 }
             }
         });
+    }
+
+    @Test
+    void testAggregation() throws IOException {
+        //DSL
+        searchRequest.source().size(0);
+        searchRequest.source().aggregation(
+                AggregationBuilders.terms("brandAggs")
+                        .field("brand")
+                        .size(20)
+        );
+        SearchResponse searchResponse = restClient.search(searchRequest, RequestOptions.DEFAULT);
+        Aggregations aggregations = searchResponse.getAggregations();
+        //注意这个返回值的参数类型是一个term接口的实现类
+        Terms brandTerms = aggregations.get("brandAggs");
+        List<? extends Terms.Bucket> buckets = brandTerms.getBuckets();
+        buckets.forEach(bucket -> {
+            log.warn(bucket.getKey().toString() + ":" + bucket.getDocCount());
+        });
+    }
+
+    //测试聚合功能
+    @Test
+    void testCompund() throws IOException {
+        Map<String, List<String>> map = compound("city", "brand", "starName");
+        Set<Map.Entry<String, List<String>>> entries = map.entrySet();
+        entries.forEach(stringListEntry -> {
+            log.warn(stringListEntry.getKey() + ":" + stringListEntry.getValue().toString());
+        });
+    }
+
+    private Map<String, List<String>> compound(String... bucketPrefixes) throws IOException {
+        Map<String, List<String>> bucketMap = new HashMap<>();
+        Arrays.stream(bucketPrefixes).forEach(bucketPrefix -> {
+            List<String> termBucket = new ArrayList<>();
+            String bucketName = bucketPrefix + "Aggs";
+            searchRequest.source().size(0);
+            searchRequest.source().aggregation(
+                    AggregationBuilders.terms(bucketName)
+                            .field(bucketPrefix)
+                            .size(20)
+            );
+            SearchResponse searchResponse = null;
+            try {
+                searchResponse = restClient.search(searchRequest, RequestOptions.DEFAULT);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            Aggregations aggregations = searchResponse.getAggregations();
+            //注意这个返回值的参数类型是一个term接口的实现类
+            Terms brandTerms = aggregations.get(bucketName);
+            List<? extends Terms.Bucket> buckets = brandTerms.getBuckets();
+            buckets.forEach(bucket -> termBucket.add(bucket.getKeyAsString()));
+            bucketMap.put(bucketPrefix, termBucket);
+        });
+        return bucketMap;
     }
 
     @BeforeEach
